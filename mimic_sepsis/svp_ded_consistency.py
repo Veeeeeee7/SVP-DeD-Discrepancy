@@ -289,8 +289,8 @@ if __name__ == "__main__":
     # non negative rewards for SVP
     # R_svp[:, :, S_death] = -1
     P_svp = make_gymP(P, R_svp, nS, nA, nS_total, S_survival, S_death)
-    V_star, pi_star = value_iteration_masked(P_svp, nS, nA, SA_mask.values, gamma=0.9, theta=1e-10)
-    # V_svp, pi_svp, is_max_iter, iter = svp_masked(P_svp, V_star, nS, nA, SA_mask.values, gamma=0.9, zeta=0.5, theta=1e-10)
+    V_star, pi_star = value_iteration_masked(P_svp, nS, nA, SA_mask.values, gamma=1.0, theta=1e-10)
+    # V_svp, pi_svp, is_max_iter, iter = svp_masked(P_svp, V_star, nS, nA, SA_mask.values, gamma=1.0, zeta=0.5, theta=1e-10)
     # avg_size_svp = np.mean(np.sum(pi_svp, axis=1))
     # print(f"SVP average policy size: {avg_size_svp}")
 
@@ -298,8 +298,8 @@ if __name__ == "__main__":
     R_ded_deadend = np.zeros((nS_total, nA, nS_total))
     R_ded_deadend[:, :, S_death] = -1
     P_deadend = make_gymP(P, R_ded_deadend, nS, nA, nS_total, S_survival, S_death)
-    V_ded_deadend, _ = value_iteration_masked(P_deadend, nS, nA, SA_mask.values, gamma=0.9, theta=1e-10)
-    Q_ded_deadend = V2Q(P_deadend, V_ded_deadend, nA, nS, gamma=0.9, mode='ded')
+    V_ded_deadend, _ = value_iteration_masked(P_deadend, nS, nA, SA_mask.values, gamma=1.0, theta=1e-10)
+    Q_ded_deadend = V2Q(P_deadend, V_ded_deadend, nA, nS, gamma=1.0, mode='ded')
     # pi_ded_deadend = ded_deadend(Q_ded_deadend, nS, nA, SA_mask.values, threshold=0.5)
     # avg_size_ded_deadend = np.mean(np.sum(pi_ded_deadend, axis=1))
     # print(f"DeD-Deadend average policy size: {avg_size_ded_deadend}")
@@ -313,7 +313,7 @@ if __name__ == "__main__":
     ious = np.zeros((len(zeta_values), len(death_thresholds)))
 
     for i, zeta in enumerate(zeta_values):
-        V_svp, pi_svp, is_max_iter, iter = svp_masked(P_svp, V_star, nS, nA, SA_mask.values, gamma=0.9, zeta=zeta, theta=1e-10)
+        V_svp, pi_svp, is_max_iter, iter = svp_masked(P_svp, V_star, nS, nA, SA_mask.values, gamma=1.0, zeta=zeta, theta=1e-10)
         avg_size_svp = np.mean(np.sum(pi_svp, axis=1))
         svp_sizes[i] = avg_size_svp
 
