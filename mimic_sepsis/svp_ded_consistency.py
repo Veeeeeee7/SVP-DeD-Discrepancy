@@ -320,7 +320,7 @@ if __name__ == "__main__":
         for j, death_threshold in enumerate(death_thresholds):
             pi_ded_deadend = ded_deadend(Q_ded_deadend, nS, nA, SA_mask.values, threshold=death_threshold)
             avg_size_ded_deadend = np.mean(np.sum(pi_ded_deadend, axis=1))
-            if j == 0:
+            if i == 0:
                 ded_sizes[j] = avg_size_ded_deadend
 
             conflict_fraction = compute_conflict_fraction(pi_svp, pi_ded_deadend, nS, nA)
