@@ -21,7 +21,7 @@ def make_policy(df_data):
     π_b = SA_count.div(SA_count.sum(axis=1), axis=0)
 
     # only allow actions frequently used by clinicians
-    SA_mask = (SA_count > 5)
+    SA_mask = (SA_count > 2)
 
     # for states without any "available" actions, allow the most frequent action
     for s in range(nS-1):
@@ -70,9 +70,7 @@ def make_gymP(P, R, nS, nA, nS_total, S_survival, S_death):
 
 
 def value_iteration_masked(gymP, nS, nA, SA_mask, gamma, theta=1e-10):
-    # Vs = []
     V = np.zeros(nS)
-    # Vs.append(V.copy())
     for _ in tqdm(itertools.count()):
         V_new = V.copy()
         for s in range(nS):
@@ -87,11 +85,7 @@ def value_iteration_masked(gymP, nS, nA, SA_mask, gamma, theta=1e-10):
         if np.isclose(np.linalg.norm(V_new - V), theta):
             break
         V = V_new
-        # Vs.append(V_new)
-    # return V, {
-    #     'V': V,
-    #     'Vs': Vs,
-    # }
+
 
     pi = np.zeros((nS, nA))
     for s in range(nS):
@@ -284,12 +278,10 @@ if __name__ == "__main__":
     P = make_transition_matrix(df, nA, nS_total, S_survival, S_death)
 
     # SVP
-    R_svp = np.zeros((nS_total, nA, nS_total))
-    R_svp[:, :, S_survival] = 1
-    # non negative rewards for SVP
-    # R_svp[:, :, S_death] = -1
-    P_svp = make_gymP(P, R_svp, nS, nA, nS_total, S_survival, S_death)
-    V_star, pi_star = value_iteration_masked(P_svp, nS, nA, SA_mask.values, gamma=1.0, theta=1e-10)
+    # R_svp = np.zeros((nS_total, nA, nS_total))
+    # R_svp[:, :, S_survival] = 1
+    # P_svp = make_gymP(P, R_svp, nS, nA, nS_total, S_survival, S_death)
+    # V_star, pi_star = value_iteration_masked(P_svp, nS, nA, SA_mask.values, gamma=1.0, theta=1e-10)
     # V_svp, pi_svp, is_max_iter, iter = svp_masked(P_svp, V_star, nS, nA, SA_mask.values, gamma=1.0, zeta=0.5, theta=1e-10)
     # avg_size_svp = np.mean(np.sum(pi_svp, axis=1))
     # print(f"SVP average policy size: {avg_size_svp}")
@@ -303,36 +295,51 @@ if __name__ == "__main__":
     # pi_ded_deadend = ded_deadend(Q_ded_deadend, nS, nA, SA_mask.values, threshold=0.5)
     # avg_size_ded_deadend = np.mean(np.sum(pi_ded_deadend, axis=1))
     # print(f"DeD-Deadend average policy size: {avg_size_ded_deadend}")
+    
 
-    zeta_values = np.arange(0, 1.01, 0.01)
-    death_thresholds = np.arange(0, 1.01, 0.01)
+    zeta_values = np.arange(0.01, 1.00, 0.01)
+    death_thresholds = np.arange(0.01, 1.00, 0.01)
 
     svp_sizes = np.zeros(len(zeta_values))
     ded_sizes = np.zeros(len(death_thresholds))
+    pi_svp_list = np.zeros((len(zeta_values), nS, nA))
+    pi_ded_list = np.zeros((len(death_thresholds), nS, nA))
+    
     conflict_fractions = np.zeros((len(zeta_values), len(death_thresholds)))
     ious = np.zeros((len(zeta_values), len(death_thresholds)))
 
-    for i, zeta in enumerate(zeta_values):
-        V_svp, pi_svp, is_max_iter, iter = svp_masked(P_svp, V_star, nS, nA, SA_mask.values, gamma=1.0, zeta=zeta, theta=1e-10)
-        avg_size_svp = np.mean(np.sum(pi_svp, axis=1))
-        svp_sizes[i] = avg_size_svp
+    # for i, zeta in enumerate(zeta_values):
+    #     V_svp, pi_svp, is_max_iter, iter = svp_masked(P_svp, V_star, nS, nA, SA_mask.values, gamma=1.0, zeta=zeta, theta=1e-10)
+    #     avg_size_svp = np.mean(np.sum(pi_svp, axis=1))
+    #     svp_sizes[i] = avg_size_svp
+    #     pi_svp_list[i] = pi_svp
 
-        for j, death_threshold in enumerate(death_thresholds):
-            pi_ded_deadend = ded_deadend(Q_ded_deadend, nS, nA, SA_mask.values, threshold=death_threshold)
-            avg_size_ded_deadend = np.mean(np.sum(pi_ded_deadend, axis=1))
-            if i == 0:
-                ded_sizes[j] = avg_size_ded_deadend
-
-            conflict_fraction = compute_conflict_fraction(pi_svp, pi_ded_deadend, nS, nA)
-            iou = compute_iou(pi_svp, pi_ded_deadend, nS, use_0_for_empty=True)
-            avg_iou = np.mean(iou)
-            conflict_fractions[i, j] = conflict_fraction
-            ious[i, j] = avg_iou
-
-            log(f"zeta: {zeta:.2f}, death_threshold: {death_threshold:.2f}, SVP size: {avg_size_svp:.2f}, DeD-Deadend size: {avg_size_ded_deadend:.2f}, Conflict fraction: {conflict_fraction:.4f}, Avg IoU: {avg_iou:.4f}")
-
+    for j, death_threshold in enumerate(death_thresholds):
+        pi_ded_deadend = ded_deadend(Q_ded_deadend, nS, nA, SA_mask.values, threshold=death_threshold)
+        avg_size_ded_deadend = np.mean(np.sum(pi_ded_deadend, axis=1))
+        ded_sizes[j] = avg_size_ded_deadend
+        pi_ded_list[j] = pi_ded_deadend
     out_dir = "results"
-    np.save(os.path.join(out_dir, "svp_sizes.npy"), svp_sizes)
     np.save(os.path.join(out_dir, "ded_sizes.npy"), ded_sizes)
-    np.save(os.path.join(out_dir, "conflict_fractions.npy"), conflict_fractions)
-    np.save(os.path.join(out_dir, "ious.npy"), ious)
+    
+
+    # for i, zeta in enumerate(zeta_values):
+    #     for j, death_threshold in enumerate(death_thresholds):
+    #         avg_size_svp = svp_sizes[i]
+    #         avg_size_ded_deadend = ded_sizes[j]
+    #         pi_svp = pi_svp_list[i]
+    #         pi_ded_deadend = pi_ded_list[j]
+
+    #         conflict_fraction = compute_conflict_fraction(pi_svp, pi_ded_deadend, nS, nA)
+    #         iou = compute_iou(pi_svp, pi_ded_deadend, nS, use_0_for_empty=True)
+    #         avg_iou = np.mean(iou)
+    #         conflict_fractions[i, j] = conflict_fraction
+    #         ious[i, j] = avg_iou
+
+    #         log(f"zeta: {zeta:.2f}, death_threshold: {death_threshold:.2f}, SVP size: {avg_size_svp:.2f}, DeD-Deadend size: {avg_size_ded_deadend:.2f}, Conflict fraction: {conflict_fraction:.4f}, Avg IoU: {avg_iou:.4f}")
+
+    # out_dir = "results"
+    # np.save(os.path.join(out_dir, "svp_sizes.npy"), svp_sizes)
+    # np.save(os.path.join(out_dir, "ded_sizes.npy"), ded_sizes)
+    # np.save(os.path.join(out_dir, "conflict_fractions.npy"), conflict_fractions)
+    # np.save(os.path.join(out_dir, "ious.npy"), ious)
