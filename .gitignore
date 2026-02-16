@@ -1,3 +1,15 @@
 mimic_sepsis/2_learn_eval/
 mimic_sepsis/mimic_sepsis_data_2025/
 .DS_Store
+__pycache__/
+.dist/
+.venv/
+old_code/
+old_figures/
+results/
+mimic_sepsis/2_clustering.ipynb
+ded.pdf
+inconsistency.pdf
+other_paper.pdf
+rl_book.pdf
+svp.pdf
